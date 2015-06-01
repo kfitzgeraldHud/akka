@@ -1311,7 +1311,7 @@ private[akka] class ShardCoordinatorSupervisor(failureBackoff: FiniteDuration, c
   import ShardCoordinatorSupervisor._
 
   def startCoordinator(): Unit = {
-    // it will be stopped in case of PersistenceFailure
+    // it will be stopped in case of persistence failure
     context.watch(context.actorOf(coordinatorProps, "coordinator"))
   }
 
