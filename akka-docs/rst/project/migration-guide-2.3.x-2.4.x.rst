@@ -234,6 +234,12 @@ Parameters to the ``Props`` factory methods have been moved to settings object `
 and ``ClusterSingletonProxySettings``. These can be created from system configuration properties and also
 amended with API as needed.
 
+The ``singletonPath`` parameter of ``ClusterSingletonProxy.props`` has changed. It is now named 
+``singletonManagerPath`` and is the logical path of the singleton manager, e.g. ``/user/singletonManager``,
+which ends with the name you defined in ``actorOf`` when creating the ``ClusterSingletonManager``.
+In 2.3.x it was the path to singleton instance, which was error-prone because one had to provide both
+the name of the singleton manager and the singleton actor.
+
 DistributedPubSub construction
 ==============================
 
