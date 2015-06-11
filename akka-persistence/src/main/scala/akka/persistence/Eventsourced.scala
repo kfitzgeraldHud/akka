@@ -94,13 +94,17 @@ private[persistence] trait Eventsourced extends Snapshotter with Stash with Stas
   private[akka] def onReplaySuccess(): Unit = ()
 
   /**
-   * INTERNAL API.
-   * Called whenever a message replay fails. Logs the error and stops the actor.
+   * Called whenever a message replay fails. By default it logs the error.
+   *
+   * Subclass may override to customize logging.
+   *
+   * The actor is always stopped after this method has been invoked.
+   *
    * @param cause failure cause.
    * @param event the event that was processed in `receiveRecover`, if the exception
    *   was thrown there
    */
-  private[akka] def onReplayFailure(cause: Throwable, event: Option[Any]): Unit = {
+  protected def onReplayFailure(cause: Throwable, event: Option[Any]): Unit =
     event match {
       case Some(evt) ⇒
         log.error(cause, "Exception in receiveRecover when replaying event type [{}] with sequence number [{}] for " +
@@ -109,11 +113,9 @@ private[persistence] trait Eventsourced extends Snapshotter with Stash with Stas
         log.error(cause, "Persistence failure when replaying events for persistenceId [{}]. " +
           "Last known sequence number [{}]", persistenceId, lastSequenceNr)
     }
-    context.stop(self)
-  }
 
   /**
-   * Called when persist fails. Logs the error.
+   * Called when persist fails. By default it logs the error.
    * Subclass may override to customize logging and for example send negative
    * acknowledgment to sender.
    *
@@ -463,14 +465,14 @@ private[persistence] trait Eventsourced extends Snapshotter with Stash with Stas
           Eventsourced.super.aroundReceive(recoveryBehavior, p)
         } catch {
           case NonFatal(t) ⇒
-            onReplayFailure(t, Some(p.payload))
+            try onReplayFailure(t, Some(p.payload)) finally context.stop(self)
         }
       case ReplayMessagesSuccess ⇒
         onReplaySuccess() // callback for subclass implementation
         changeState(initializing(recoveryBehavior))
         journal ! ReadHighestSequenceNr(lastSequenceNr, persistenceId, self)
       case ReplayMessagesFailure(cause) ⇒
-        onReplayFailure(cause, event = None)
+        try onReplayFailure(cause, event = None) finally context.stop(self)
       case other ⇒
         internalStash.stash()
     }
