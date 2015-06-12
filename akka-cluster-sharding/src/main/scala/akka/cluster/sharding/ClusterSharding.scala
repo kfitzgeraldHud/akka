@@ -448,7 +448,12 @@ private[akka] class ClusterShardingGuardian extends Actor {
       val shardRegion = context.child(encName).getOrElse {
         if (context.child(cName).isEmpty) {
           val coordinatorProps = ShardCoordinator.props(typeName, settings, allocationStrategy)
-          val singletonProps = ShardCoordinatorSupervisor.props(coordinatorFailureBackoff, coordinatorProps)
+          val singletonProps = BackoffSupervisor.props(
+            childProps = coordinatorProps,
+            childName = "coordinator",
+            minBackoff = coordinatorFailureBackoff,
+            maxBackoff = coordinatorFailureBackoff * 5,
+            randomFactor = 0.2)
           val singletonSettings = settings.coordinatorSingletonSettings
             .withSingletonName("singleton").withRole(role)
           context.actorOf(ClusterSingletonManager.props(
@@ -1280,45 +1285,6 @@ private[akka] class Shard(
       state = state.copy(state.entities + id)
       a
     }
-  }
-}
-
-/**
- * INTERNAL API
- * @see [[ClusterSharding$ ClusterSharding extension]]
- */
-private[akka] object ShardCoordinatorSupervisor {
-  /**
-   * Factory method for the [[akka.actor.Props]] of the [[ShardCoordinator]] actor.
-   */
-  def props(failureBackoff: FiniteDuration, coordinatorProps: Props): Props =
-    Props(new ShardCoordinatorSupervisor(failureBackoff, coordinatorProps))
-      .withDeploy(Deploy.local)
-
-  /**
-   * INTERNAL API
-   */
-  private case object StartCoordinator
-}
-
-/**
- * INTERNAL API
- */
-private[akka] class ShardCoordinatorSupervisor(failureBackoff: FiniteDuration, coordinatorProps: Props) extends Actor {
-  import ShardCoordinatorSupervisor._
-
-  def startCoordinator(): Unit = {
-    // it will be stopped in case of persistence failure
-    context.watch(context.actorOf(coordinatorProps, "coordinator"))
-  }
-
-  override def preStart(): Unit = startCoordinator()
-
-  def receive = {
-    case Terminated(_) ⇒
-      import context.dispatcher
-      context.system.scheduler.scheduleOnce(failureBackoff, self, StartCoordinator)
-    case StartCoordinator ⇒ startCoordinator()
   }
 }
 

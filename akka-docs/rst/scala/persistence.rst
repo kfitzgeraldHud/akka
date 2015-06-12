@@ -127,7 +127,10 @@ If persistence of an event fails, ``onPersistFailure`` will be invoked (logging 
 and the actor will unconditionally be stopped. The reason that it cannot resume when persist fails
 is that it is unknown if the even was actually persisted or not, and therefore it is in an inconsistent
 state. Restarting on persistent failures will most likely fail anyway, since the journal is probably
-unavailable. It is better to stop the actor and after a back-off timeout start it again.
+unavailable. It is better to stop the actor and after a back-off timeout start it again. The
+``akka.persistence.BackoffSupervisor`` actor is provided to support such restarts.
+
+.. includecode:: code/docs/persistence/PersistenceDocSpec.scala#backoff
 
 The easiest way to run this example yourself is to download `Typesafe Activator <http://www.typesafe.com/platform/getstarted>`_
 and open the tutorial named `Akka Persistence Samples with Scala <http://www.typesafe.com/activator/template/akka-sample-persistence-scala>`_.
